@@ -2,7 +2,7 @@
 FROM golang:1.25-alpine AS builder
 
 # Устанавливаем необходимые инструменты
-RUN apk add --no-cache git
+RUN apk add --no-cache git tzdata
 
 # Устанавливаем рабочую директорию
 WORKDIR /app

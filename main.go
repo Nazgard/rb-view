@@ -60,6 +60,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	showResp := mode == "resp"
 	location, err := time.LoadLocation("Europe/Moscow")
 	if err != nil {
+		log.Printf("Error loading timezone: %v", err)
 		location = time.Local
 	}
 	now := time.Now().In(location)
