@@ -200,7 +200,11 @@ func handler(w http.ResponseWriter, r *http.Request) {
         </tr>
         {{range .Departures}}
         <tr>
-            <td>{{.Time.Format "02.01 15:04:05"}} МСК</td>
+            <td>{{.Time.Format "02.01 15:04:05"}} МСК 
+				{{if not .IsPast}}
+					<em>(через {{.MinutesLeft}} мин)</em>
+                {{end}}
+			</td>
             <td>{{.Name}}</td>
         </tr>
         {{end}}
