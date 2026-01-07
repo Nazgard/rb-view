@@ -8,7 +8,7 @@ RUN apk add --no-cache git
 WORKDIR /app
 
 # Копируем go.mod и go.sum (для кэширования зависимостей)
-COPY go.mod go.sum ./
+#COPY go.mod go.sum ./
 
 # Загружаем зависимости
 #RUN go mod download
