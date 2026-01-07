@@ -28,6 +28,7 @@ FROM scratch
 
 # Копируем только исполняемый файл из этапа сборки
 COPY --from=builder /app/bot-rb /bot-rb
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 
 # Указываем точку входа
 ENTRYPOINT ["/bot-rb"]
