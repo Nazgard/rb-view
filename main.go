@@ -58,11 +58,15 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	// Определяем режим: resp — время респа (+5 часов), иначе — время смерти
 	mode := r.URL.Query().Get("mode")
 	showResp := mode == "resp"
-	now := time.Now()
+	location, err := time.LoadLocation("Europe/Moscow")
+	if err != nil {
+		location = time.Local
+	}
+	now := time.Now().In(location)
 
 	departures := make([]Departure, 0, len(state))
 	for name, t := range state {
-		parsedTime, err := time.Parse("2006-01-02 15:04:05", t)
+		parsedTime, err := time.ParseInLocation("2006-01-02 15:04:05", t, location)
 		if err != nil {
 			log.Printf("Failed to parse time '%s' for %s: %v\n", t, name, err)
 			continue
