@@ -11,7 +11,7 @@ WORKDIR /app
 COPY go.mod go.sum ./
 
 # Загружаем зависимости
-RUN go mod download
+#RUN go mod download
 
 # Копируем весь исходный код
 COPY . .
