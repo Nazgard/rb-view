@@ -184,7 +184,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
         </tr>
         {{range .Departures}}
         <tr>
-            <td>{{.Time.Format "01.02 15:04:05"}}</td>
+            <td>{{.Time.Format "02.01 15:04:05"}}</td>
             <td>{{.Name}}</td>
         </tr>
         {{end}}
