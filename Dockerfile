@@ -21,7 +21,7 @@ ENV CGO_ENABLED=0
 ENV GOOS=linux
 ENV GOARCH=amd64
 
-RUN go build -o bot-rb .
+RUN go build -o bot-rb main.go
 
 # ============ Этап 2: Финальный минимальный образ ============
 FROM scratch
