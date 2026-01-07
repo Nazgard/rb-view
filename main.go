@@ -12,8 +12,10 @@ import (
 )
 
 type Departure struct {
-	Time time.Time
-	Name string
+	Time        time.Time
+	Name        string
+	MinutesLeft int  // минуты до/после респа (отрицательное — уже прошло)
+	IsPast      bool // true если респ уже был
 }
 
 var httpClient = &http.Client{
@@ -56,6 +58,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	// Определяем режим: resp — время респа (+5 часов), иначе — время смерти
 	mode := r.URL.Query().Get("mode")
 	showResp := mode == "resp"
+	now := time.Now()
 
 	departures := make([]Departure, 0, len(state))
 	for name, t := range state {
@@ -70,7 +73,15 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			parsedTime = parsedTime.Add(5 * time.Hour)
 		}
 
-		departures = append(departures, Departure{parsedTime, name})
+		minutesLeft := int(parsedTime.Sub(now).Minutes())
+		isPast := minutesLeft < 0
+
+		departures = append(departures, Departure{
+			Time:        parsedTime,
+			Name:        name,
+			MinutesLeft: minutesLeft,
+			IsPast:      isPast,
+		})
 	}
 
 	// Сортировка по отображаемому времени
@@ -184,7 +195,11 @@ func handler(w http.ResponseWriter, r *http.Request) {
         </tr>
         {{range .Departures}}
         <tr>
-            <td>{{.Time.Format "02.01 15:04:05"}} МСК</td>
+            <td>{{.Time.Format "02.01 15:04:05"}} МСК 
+				{{if not .IsPast}}
+					<em>(через {{.MinutesLeft}} мин)</em>
+                {{end}}
+			</td>
             <td>{{.Name}}</td>
         </tr>
         {{end}}
