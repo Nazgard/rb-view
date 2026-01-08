@@ -108,7 +108,9 @@ func main() {
 	}()
 
 	http.HandleFunc("/", handler)
-	http.HandleFunc("/api/table", tableAPIHandler) // новый эндпоинт
+	http.HandleFunc("/api/table", tableAPIHandler)
+	// Статические файлы (звук, если добавишь картинки и т.д.)
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static/"))))
 
 	log.Println("Server starting on http://localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
