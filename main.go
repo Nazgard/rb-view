@@ -356,25 +356,71 @@ const pageTemplate = `<!DOCTYPE html>
     </div>
 
     <script>
-        function toggleMode() {
-            const checked = document.getElementById('modeToggle').checked;
-            const url = checked ? '?mode=resp' : '/';
-            if (window.location.search !== (checked ? '?mode=resp' : '')) {
-                window.location.href = url;
-            }
+    function toggleMode() {
+        const checked = document.getElementById('modeToggle').checked;
+        const url = checked ? '?mode=resp' : '/';
+        if (window.location.search !== (checked ? '?mode=resp' : '')) {
+            window.location.href = url;
         }
+    }
 
-        // Автообновление каждые 10 секунд
-        setInterval(() => {
-            fetch(window.location.href)
-                .then(r => r.text())
-                .then(html => {
-                    document.open();
-                    document.write(html);
-                    document.close();
-                })
-                .catch(err => console.error('Update failed:', err));
-        }, 10000);
-    </script>
+    // Частичное обновление таблицы каждые 10 секунд
+    function updateTable() {
+        const mode = document.getElementById('modeToggle').checked ? 'resp' : '';
+        fetch('/api/deaths')
+            .then(r => r.json())
+            .then(data => {
+                const tbody = document.querySelector('tbody');
+                tbody.innerHTML = ''; // очищаем старые строки
+
+                const now = new Date().getTime() / 1000; // грубо, но для клиента хватит
+
+                Object.entries(data).forEach(([name, deathTimeStr]) => {
+                    let t = new Date(deathTimeStr.replace(' ', 'T') + 'Z'); // грубый парсинг, предполагаем UTC от сервера
+                    if (mode === 'resp') t = new Date(t.getTime() + 5*60*60*1000);
+
+                    const minutesLeft = Math.round((t - new Date()) / 60000);
+                    const isPast = minutesLeft < 0;
+
+                    const row = document.createElement('tr');
+                    if (isPast) row.classList.add('past');
+
+                    const timeCell = document.createElement('td');
+                    timeCell.className = 'time-cell';
+                    timeCell.innerHTML = t.toLocaleString('ru-RU', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    }).replace(',', '') + 
+                    (!isPast ? `<span class="minutes">(через ${minutesLeft} мин)</span>` : '');
+
+                    const nameCell = document.createElement('td');
+                    nameCell.textContent = name;
+
+                    row.appendChild(timeCell);
+                    row.appendChild(nameCell);
+                    tbody.appendChild(row);
+                });
+
+                // Сортировка строк по времени (клиентская)
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+                rows.sort((a, b) => {
+                    const timeA = new Date(a.querySelector('.time-cell').textContent.split(' ')[0].split('.').reverse().join('-'));
+                    const timeB = new Date(b.querySelector('.time-cell').textContent.split(' ')[0].split('.').reverse().join('-'));
+                    return timeA - timeB;
+                });
+                rows.forEach(row => tbody.appendChild(row));
+            })
+            .catch(err => console.error('Update failed:', err));
+    }
+
+    // Первое обновление через 10 сек, потом каждые 10 сек
+    setTimeout(() => {
+        updateTable();
+        setInterval(updateTable, 10000);
+    }, 10000);
+</script>
 </body>
 </html>`
