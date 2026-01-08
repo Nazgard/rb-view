@@ -59,7 +59,6 @@ func updateState() {
 }
 
 func main() {
-	// Фоновая задача: обновляем данные каждую секунду
 	go func() {
 		for {
 			updateState()
@@ -136,16 +135,21 @@ const pageTemplate = `<!DOCTYPE html>
             --header-bg: #333;
         }
 
-        body {
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
             background-color: var(--bg);
             color: var(--text);
             font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif;
-            margin: 0;
-            padding: 2rem;
-            min-height: 100vh;
+        }
+
+        body {
             display: flex;
             flex-direction: column;
             align-items: center;
+            padding: 2rem 2rem 1rem; /* уменьшили снизу */
+            box-sizing: border-box;
         }
 
         h1 {
@@ -216,6 +220,9 @@ const pageTemplate = `<!DOCTYPE html>
             box-shadow: 0 8px 32px rgba(0,0,0,0.6);
             border-radius: 12px;
             overflow: hidden;
+            flex-grow: 1; /* позволяет таблице занимать пространство, но не больше нужного */
+            display: flex;
+            align-items: flex-start;
         }
 
         table {
@@ -224,6 +231,7 @@ const pageTemplate = `<!DOCTYPE html>
             border-collapse: collapse;
             background-color: var(--table-bg);
             font-size: 1.5rem;
+            margin: auto; /* центрируем таблицу вертикально если места много */
         }
 
         th, td {
@@ -266,7 +274,7 @@ const pageTemplate = `<!DOCTYPE html>
 
         /* Мобильные устройства */
         @media (max-width: 768px) {
-            body { padding: 1rem; }
+            body { padding: 1rem 1rem 0.5rem; }
             h1 { font-size: 2rem; margin-bottom: 1rem; }
             .toggle-container {
                 font-size: 1.1rem;
@@ -295,7 +303,7 @@ const pageTemplate = `<!DOCTYPE html>
 
         /* Большие экраны */
         @media (min-width: 1920px) {
-            body { padding: 3rem; }
+            body { padding: 3rem 3rem 1.5rem; }
             h1 { font-size: 3.8rem; margin-bottom: 2rem; }
             .toggle-container { font-size: 1.8rem; gap: 1.5rem; }
             .toggle-switch { width: 90px; height: 48px; }
