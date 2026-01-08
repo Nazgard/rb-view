@@ -101,6 +101,14 @@
             opacity: 1;
         }
 
+        .sound-hint {
+            font-size: 0.9rem;
+            opacity: 0.7;
+            margin-top: 0.5rem;
+            text-align: right;
+            width: 100%;
+        }
+
         .table-container {
             width: 100%;
             max-width: 1400px;
@@ -177,40 +185,13 @@
             text-decoration: underline;
         }
 
-        /* Адаптив */
         @media (max-width: 768px) {
-            body { padding: 1rem; }
-            h1 { font-size: 2rem; margin-bottom: 1rem; }
-            .toggle-container { font-size: 1.1rem; gap: 1.5rem; justify-content: center; }
-            .toggle-container label { padding-left: 2.4rem; }
-            .toggle-container label::before { width: 1.5rem; height: 1.5rem; }
-            .toggle-container label::after { left: 0.45rem; width: 0.5rem; height: 0.95rem; }
-            table { font-size: 1.1rem; min-width: 0; }
-            th, td { padding: 0.8rem 1rem; }
-            .minutes { display: block; margin-left: 0; margin-top: 0.3rem; }
-            .footer { font-size: 1rem; }
+            .toggle-container { justify-content: center; gap: 1.5rem; }
+            .sound-hint { text-align: center; }
         }
 
         @media (max-width: 480px) {
-            h1 { font-size: 1.7rem; }
             .toggle-container { flex-direction: column; gap: 1rem; }
-            .toggle-container label { padding-left: 2.2rem; }
-            table { font-size: 1rem; }
-            th, td { padding: 0.6rem 0.8rem; }
-            .footer { font-size: 0.9rem; }
-        }
-
-        @media (min-width: 1920px) {
-            body { padding: 3rem; }
-            h1 { font-size: 3.8rem; }
-            .toggle-container { font-size: 1.8rem; gap: 2.5rem; }
-            .toggle-container label { padding-left: 3rem; }
-            .toggle-container label::before { width: 2.2rem; height: 2.2rem; }
-            .toggle-container label::after { left: 0.65rem; width: 0.7rem; height: 1.3rem; }
-            table { font-size: 2rem; }
-            th, td { padding: 1.8rem 2rem; }
-            .table-container { max-width: 1800px; }
-            .footer { font-size: 1.3rem; }
         }
     </style>
 </head>
@@ -236,9 +217,7 @@
             <th>Босс</th>
         </tr>
         </thead>
-        <tbody>
-        <!-- Заполняется через JS -->
-        </tbody>
+        <tbody></tbody>
     </table>
 </div>
 
@@ -248,19 +227,26 @@
     </a>
 </div>
 
-<!-- Скрытый аудио-элемент с твоим MP3 -->
 <audio id="alertSound" preload="auto">
     <source src="/static/alert.mp3" type="audio/mpeg">
-    Ваш браузер не поддерживает аудио.
 </audio>
 
 <script>
-    let nearResp = false;
+    let audioUnlocked = false;
+    let lastPlayTime = 0;
+    const COOLDOWN_MS = 30 * 60 * 1000; // 30 минут
+
+    const audio = document.getElementById('alertSound');
 
     function playAlert() {
-        const audio = document.getElementById('alertSound');
-        audio.currentTime = 0; // перемотка на начало
-        audio.play().catch(e => console.log('Не удалось воспроизвести звук:', e));
+        if (!audioUnlocked) return;
+
+        const now = Date.now();
+        if (now - lastPlayTime >= COOLDOWN_MS) {
+            audio.currentTime = 0;
+            audio.play().catch(e => console.log('Play failed:', e));
+            lastPlayTime = now;
+        }
     }
 
     function updateTable() {
@@ -291,21 +277,16 @@
                     tbody.appendChild(row);
                 });
 
-                // Проверка на ближайший респ ≤5 мин
-                if (isRespMode && soundEnabled) {
+                if (isRespMode && soundEnabled && audioUnlocked) {
                     const hasNear = entries.some(e => !e.is_past && e.minutes_left > 0 && e.minutes_left <= 5);
-                    if (hasNear && !nearResp) {
+                    if (hasNear) {
                         playAlert();
                     }
-                    nearResp = hasNear;
-                } else {
-                    nearResp = false;
                 }
             })
             .catch(err => console.error('Table update failed:', err));
     }
 
-    // Сохранение состояний
     document.getElementById('modeToggle').addEventListener('change', function() {
         localStorage.setItem('respMode', this.checked);
         const newMode = this.checked ? 'resp' : '';
@@ -314,10 +295,16 @@
     });
 
     document.getElementById('soundToggle').addEventListener('change', function() {
-        localStorage.setItem('soundMode', this.checked);
+        if (this.checked && !audioUnlocked) {
+            audio.play().then(() => {
+                audio.pause();
+                audio.currentTime = 0;
+                audioUnlocked = true;
+                updateTable();
+            }).catch(e => console.log('Unlock failed:', e));
+        }
     });
 
-    // Обработка popstate
     window.addEventListener('popstate', () => {
         const urlParams = new URLSearchParams(window.location.search);
         const isResp = urlParams.get('mode') === 'resp';
@@ -326,7 +313,6 @@
         updateTable();
     });
 
-    // Инициализация при загрузке
     window.addEventListener('load', () => {
         const urlParams = new URLSearchParams(window.location.search);
         let isResp = urlParams.get('mode') === 'resp';
@@ -340,8 +326,9 @@
             if (isResp) history.pushState({}, '', '?mode=resp');
         }
 
-        const soundEnabled = localStorage.getItem('soundMode') === 'true';
-        document.getElementById('soundToggle').checked = soundEnabled;
+        document.getElementById('soundToggle').checked = false;
+        audioUnlocked = false;
+        lastPlayTime = 0;
 
         updateTable();
         setInterval(updateTable, 10000);
