@@ -12,7 +12,7 @@ import (
 
 type TableEntry struct {
 	Name        string `json:"name"`
-	Time        string `json:"time"`        // Формат: "02.01 15:04:05"
+	Time        string `json:"time"`         // Формат: "02.01 15:04:05"
 	MinutesLeft int    `json:"minutes_left"` // может быть отрицательным
 	IsPast      bool   `json:"is_past"`
 }
@@ -130,174 +130,174 @@ const pageTemplate = `<!DOCTYPE html>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Полевые боссы сервера Айрин</title>
     <style>
-        :root {
-            --bg: #1e1e1e;
-            --text: #e0e0e0;
-            --accent: #ffcc00;
-            --table-bg: #111;
-            --border: #444;
-            --header-bg: #333;
-        }
+    :root {
+        --bg: #1e1e1e;
+        --text: #e0e0e0;
+        --accent: #ffcc00;
+        --table-bg: #111;
+        --border: #444;
+        --header-bg: #333;
+    }
 
-        html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            background-color: var(--bg);
-            color: var(--text);
-            font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif;
-        }
+    html, body {
+        height: 100vh;
+        margin: 0;
+        padding: 0;
+        background-color: var(--bg);
+        color: var(--text);
+        font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif;
+    }
 
-        body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 2rem 2rem 2rem;
-            box-sizing: border-box;
-        }
+    body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 2rem;
+        box-sizing: border-box;
+    }
 
-        h1 {
-            color: var(--accent);
-            font-size: 2.8rem;
-            margin-bottom: 1.5rem;
-            text-shadow: 0 0 10px rgba(255,204,0,0.3);
-            text-align: center;
-        }
+    h1 {
+        color: var(--accent);
+        font-size: 2.8rem;
+        margin-bottom: 1.5rem;
+        text-shadow: 0 0 10px rgba(255,204,0,0.3);
+        text-align: center;
+    }
 
-        .toggle-container {
-            margin-bottom: 2.5rem;
-            font-size: 1.4rem;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
+    .toggle-container {
+        margin-bottom: 2.5rem;
+        font-size: 1.4rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
 
-        .toggle-switch {
-            position: relative;
-            display: inline-block;
-            width: 70px;
-            height: 38px;
-            flex-shrink: 0;
-        }
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 70px;
+        height: 38px;
+        flex-shrink: 0;
+    }
 
-        .toggle-switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
 
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            inset: 0;
-            background-color: #555;
-            transition: .4s;
-            border-radius: 38px;
-        }
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        inset: 0;
+        background-color: #555;
+        transition: .4s;
+        border-radius: 38px;
+    }
 
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 30px;
-            width: 30px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 30px;
+        width: 30px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
 
-        input:checked + .slider {
-            background-color: var(--accent);
-        }
+    input:checked + .slider {
+        background-color: var(--accent);
+    }
 
-        input:checked + .slider:before {
-            transform: translateX(32px);
-        }
+    input:checked + .slider:before {
+        transform: translateX(32px);
+    }
 
-        .table-container {
-            width: 100%;
-            max-width: 1400px;
-            overflow-x: auto;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.6);
-            border-radius: 12px;
-            overflow: hidden;
-            background-color: var(--table-bg);
-        }
+    .table-container {
+        width: 100%;
+        max-width: 1400px;
+        overflow-y: auto;
+        overflow-x: auto;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+        border-radius: 12px;
+        background-color: var(--table-bg);
+    }
 
-        table {
-            width: 100%;
-            min-width: 600px;
-            border-collapse: collapse;
-            background-color: var(--table-bg);
-            font-size: 1.5rem;
-        }
+    table {
+        width: 100%;
+        min-width: 600px;
+        border-collapse: collapse;
+        background-color: var(--table-bg);
+        font-size: 1.5rem;
+    }
 
-        th, td {
-            padding: 1.2rem 1.5rem;
-            text-align: left;
-            border-bottom: 1px solid var(--border);
-        }
+    th, td {
+        padding: 1.2rem 1.5rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+    }
 
-        th {
-            background-color: var(--header-bg);
-            color: var(--accent);
-            font-weight: 600;
-            position: sticky;
-            top: 0;
-        }
+    th {
+        background-color: var(--header-bg);
+        color: var(--accent);
+        font-weight: 600;
+        position: sticky;
+        top: 0;
+    }
 
-        tr:hover {
-            background-color: rgba(255,204,0,0.05);
-        }
+    tr:hover {
+        background-color: rgba(255,204,0,0.05);
+    }
 
-        .time-cell {
-            white-space: nowrap;
-            font-family: 'Courier New', monospace;
-            font-weight: 500;
-        }
+    .time-cell {
+        white-space: nowrap;
+        font-family: 'Courier New', monospace;
+        font-weight: 500;
+    }
 
-        .minutes {
-            color: #a0ffa0;
-            font-size: 0.9em;
-            margin-left: 0.8rem;
-        }
+    .minutes {
+        color: #a0ffa0;
+        font-size: 0.9em;
+        margin-left: 0.8rem;
+    }
 
-        .past {
-            color: #888;
-        }
+    .past {
+        color: #888;
+    }
 
-        .past .minutes {
-            color: #666;
-        }
+    .past .minutes {
+        color: #666;
+    }
 
-        /* Адаптив */
-        @media (max-width: 768px) {
-            body { padding: 1rem; }
-            h1 { font-size: 2rem; margin-bottom: 1rem; }
-            .toggle-container { font-size: 1.1rem; flex-direction: column; gap: 0.8rem; text-align: center; }
-            table { font-size: 1.1rem; min-width: 500px; }
-            th, td { padding: 0.8rem 1rem; }
-            .minutes { display: block; margin-left: 0; margin-top: 0.3rem; }
-        }
+    /* Адаптив */
+    @media (max-width: 768px) {
+        body { padding: 1rem; }
+        h1 { font-size: 2rem; margin-bottom: 1rem; }
+        .toggle-container { font-size: 1.1rem; flex-direction: column; gap: 0.8rem; text-align: center; }
+        table { font-size: 1.1rem; min-width: 0; }
+        th, td { padding: 0.8rem 1rem; }
+        .minutes { display: block; margin-left: 0; margin-top: 0.3rem; }
+    }
 
-        @media (max-width: 480px) {
-            h1 { font-size: 1.7rem; }
-            table { font-size: 1rem; }
-            th, td { padding: 0.6rem 0.8rem; }
-        }
+    @media (max-width: 480px) {
+        h1 { font-size: 1.7rem; }
+        table { font-size: 1rem; }
+        th, td { padding: 0.6rem 0.8rem; }
+    }
 
-        @media (min-width: 1920px) {
-            body { padding: 3rem; }
-            h1 { font-size: 3.8rem; }
-            .toggle-container { font-size: 1.8rem; }
-            table { font-size: 2rem; }
-            th, td { padding: 1.8rem 2rem; }
-            .table-container { max-width: 1800px; }
-        }
-    </style>
+    @media (min-width: 1920px) {
+        body { padding: 3rem; }
+        h1 { font-size: 3.8rem; }
+        .toggle-container { font-size: 1.8rem; }
+        table { font-size: 2rem; }
+        th, td { padding: 1.8rem 2rem; }
+        .table-container { max-width: 1800px; }
+    }
+</style>
 </head>
 <body>
     <h1>Полевые боссы сервера Айрин</h1>
@@ -330,6 +330,8 @@ const pageTemplate = `<!DOCTYPE html>
         function toggleMode() {
             const checked = document.getElementById('modeToggle').checked;
             localStorage.setItem('respMode', checked);
+            const newMode = checked ? 'resp' : '';
+            history.pushState({}, '', newMode ? '?mode=' + newMode : '/');
             updateTable();
         }
 
@@ -363,13 +365,31 @@ const pageTemplate = `<!DOCTYPE html>
                 .catch(err => console.error('Table update failed:', err));
         }
 
-        // Восстанавливаем режим из localStorage
-        window.addEventListener('load', () => {
-            const saved = localStorage.getItem('respMode') === 'true';
-            document.getElementById('modeToggle').checked = saved;
-            updateTable(); // первое обновление сразу
+        // Обработка навигации назад/вперёд
+        window.addEventListener('popstate', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const isResp = urlParams.get('mode') === 'resp';
+            document.getElementById('modeToggle').checked = isResp;
+            updateTable();
+        });
 
-            // Последующие каждые 10 секунд
+        // Первое обновление сразу
+        window.addEventListener('load', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const modeFromUrl = urlParams.get('mode') === 'resp';
+            if (window.location.search) {
+                // Если есть параметр в URL, используем его и сохраняем в localStorage
+                document.getElementById('modeToggle').checked = modeFromUrl;
+                localStorage.setItem('respMode', modeFromUrl);
+            } else {
+                // Нет параметра, используем из localStorage
+                const saved = localStorage.getItem('respMode') === 'true';
+                document.getElementById('modeToggle').checked = saved;
+                // Опционально: обновляем URL без перезагрузки, если нужно
+                const newMode = saved ? 'resp' : '';
+                if (newMode) history.pushState({}, '', '?mode=' + newMode);
+            }
+            updateTable();
             setInterval(updateTable, 10000);
         });
     </script>
