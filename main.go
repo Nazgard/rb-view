@@ -10,16 +10,16 @@ import (
 	"time"
 )
 
-type Departure struct {
-	Time        time.Time
-	Name        string
-	MinutesLeft int
-	IsPast      bool
+type TableEntry struct {
+	Name        string `json:"name"`
+	Time        string `json:"time"`        // Формат: "02.01 15:04:05"
+	MinutesLeft int    `json:"minutes_left"` // может быть отрицательным
+	IsPast      bool   `json:"is_past"`
 }
 
 var (
 	httpClient     = &http.Client{Timeout: 10 * time.Second}
-	state          = make(map[string]string)
+	state          = make(map[string]string) // сырые данные смерти от внешнего API
 	moscowLocation *time.Location
 	tmpl           = template.Must(template.New("page").Parse(pageTemplate))
 )
@@ -58,26 +58,15 @@ func updateState() {
 	state = loadTimes()
 }
 
-func main() {
-	go func() {
-		for {
-			updateState()
-			time.Sleep(1 * time.Second)
-		}
-	}()
-
-	http.HandleFunc("/", handler)
-	log.Println("Server starting on http://localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
-}
-
-func handler(w http.ResponseWriter, r *http.Request) {
+// Новый JSON API для таблицы
+func tableAPIHandler(w http.ResponseWriter, r *http.Request) {
 	mode := r.URL.Query().Get("mode")
 	showResp := mode == "resp"
 
 	now := time.Now().In(moscowLocation)
 
-	departures := make([]Departure, 0, len(state))
+	entries := make([]TableEntry, 0, len(state))
+
 	for name, t := range state {
 		parsedTime, err := time.ParseInLocation("2006-01-02 15:04:05", t, moscowLocation)
 		if err != nil {
@@ -92,28 +81,43 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		minutesLeft := int(parsedTime.Sub(now).Minutes())
 		isPast := minutesLeft < 0
 
-		departures = append(departures, Departure{
-			Time:        parsedTime,
+		entries = append(entries, TableEntry{
 			Name:        name,
+			Time:        parsedTime.Format("02.01 15:04:05"),
 			MinutesLeft: minutesLeft,
 			IsPast:      isPast,
 		})
 	}
 
-	sort.Slice(departures, func(i, j int) bool {
-		return departures[i].Time.Before(departures[j].Time)
+	// Сортировка по времени
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Time < entries[j].Time // строка, но формат позволяет лексикографическую сортировку
 	})
 
-	data := struct {
-		Departures []Departure
-		ShowResp   bool
-	}{
-		Departures: departures,
-		ShowResp:   showResp,
-	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-cache")
+	json.NewEncoder(w).Encode(entries)
+}
 
+func main() {
+	go func() {
+		for {
+			updateState()
+			time.Sleep(1 * time.Second)
+		}
+	}()
+
+	http.HandleFunc("/", handler)
+	http.HandleFunc("/api/table", tableAPIHandler) // новый эндпоинт
+
+	log.Println("Server starting on http://localhost:8080")
+	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	// Начальная загрузка — просто отдаём HTML с пустой таблицей или с данными (можно пустую)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := tmpl.Execute(w, data); err != nil {
+	if err := tmpl.Execute(w, struct{ ShowResp bool }{ShowResp: r.URL.Query().Get("mode") == "resp"}); err != nil {
 		http.Error(w, "Template error", http.StatusInternalServerError)
 		log.Println("Template execute error:", err)
 	}
@@ -148,7 +152,7 @@ const pageTemplate = `<!DOCTYPE html>
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 2rem 2rem 2rem; /* равномерный padding, снизу чуть больше для дыхания */
+            padding: 2rem 2rem 2rem;
             box-sizing: border-box;
         }
 
@@ -220,7 +224,7 @@ const pageTemplate = `<!DOCTYPE html>
             box-shadow: 0 8px 32px rgba(0,0,0,0.6);
             border-radius: 12px;
             overflow: hidden;
-            background-color: var(--table-bg); /* явный bg, чтобы не было прозрачности */
+            background-color: var(--table-bg);
         }
 
         table {
@@ -269,52 +273,29 @@ const pageTemplate = `<!DOCTYPE html>
             color: #666;
         }
 
-        /* Мобильные устройства */
+        /* Адаптив */
         @media (max-width: 768px) {
-            body { padding: 1rem 1rem 1.5rem; }
+            body { padding: 1rem; }
             h1 { font-size: 2rem; margin-bottom: 1rem; }
-            .toggle-container {
-                font-size: 1.1rem;
-                gap: 0.8rem;
-                flex-direction: column;
-                text-align: center;
-            }
-            .toggle-switch { width: 60px; height: 34px; }
-            .slider:before { width: 26px; height: 26px; }
-            input:checked + .slider:before { transform: translateX(26px); }
+            .toggle-container { font-size: 1.1rem; flex-direction: column; gap: 0.8rem; text-align: center; }
             table { font-size: 1.1rem; min-width: 500px; }
             th, td { padding: 0.8rem 1rem; }
-            .minutes {
-                display: block;
-                margin-left: 0;
-                margin-top: 0.3rem;
-            }
+            .minutes { display: block; margin-left: 0; margin-top: 0.3rem; }
         }
 
         @media (max-width: 480px) {
             h1 { font-size: 1.7rem; }
-            .toggle-container { font-size: 1rem; }
             table { font-size: 1rem; }
             th, td { padding: 0.6rem 0.8rem; }
         }
 
-        /* Большие экраны */
         @media (min-width: 1920px) {
-            body { padding: 3rem 3rem 3rem; }
-            h1 { font-size: 3.8rem; margin-bottom: 2rem; }
-            .toggle-container { font-size: 1.8rem; gap: 1.5rem; }
-            .toggle-switch { width: 90px; height: 48px; }
-            .slider:before { width: 38px; height: 38px; }
-            input:checked + .slider:before { transform: translateX(42px); }
+            body { padding: 3rem; }
+            h1 { font-size: 3.8rem; }
+            .toggle-container { font-size: 1.8rem; }
             table { font-size: 2rem; }
             th, td { padding: 1.8rem 2rem; }
             .table-container { max-width: 1800px; }
-        }
-
-        @media (min-width: 2560px) {
-            h1 { font-size: 4.5rem; }
-            table { font-size: 2.4rem; }
-            th, td { padding: 2.2rem 2.5rem; }
         }
     </style>
 </head>
@@ -325,7 +306,7 @@ const pageTemplate = `<!DOCTYPE html>
         <strong>Показывать:</strong>
         <span>время смерти</span>
         <label class="toggle-switch">
-            <input type="checkbox" id="modeToggle" {{if .ShowResp}}checked{{end}} onchange="toggleMode()">
+            <input type="checkbox" id="modeToggle" onchange="toggleMode()">
             <span class="slider"></span>
         </label>
         <span>время респа (+5 ч)</span>
@@ -340,87 +321,57 @@ const pageTemplate = `<!DOCTYPE html>
                 </tr>
             </thead>
             <tbody>
-                {{range .Departures}}
-                <tr {{if .IsPast}}class="past"{{end}}>
-                    <td class="time-cell">
-                        {{.Time.Format "02.01 15:04:05"}}
-                        {{if not .IsPast}}
-                            <span class="minutes">(через {{.MinutesLeft}} мин)</span>
-                        {{end}}
-                    </td>
-                    <td>{{.Name}}</td>
-                </tr>
-                {{end}}
+                <!-- Заполняется через JS -->
             </tbody>
         </table>
     </div>
 
     <script>
-    function toggleMode() {
-        const checked = document.getElementById('modeToggle').checked;
-        const url = checked ? '?mode=resp' : '/';
-        if (window.location.search !== (checked ? '?mode=resp' : '')) {
-            window.location.href = url;
+        function toggleMode() {
+            const checked = document.getElementById('modeToggle').checked;
+            localStorage.setItem('respMode', checked);
+            updateTable();
         }
-    }
 
-    // Частичное обновление таблицы каждые 10 секунд
-    function updateTable() {
-        const mode = document.getElementById('modeToggle').checked ? 'resp' : '';
-        fetch('/api/deaths')
-            .then(r => r.json())
-            .then(data => {
-                const tbody = document.querySelector('tbody');
-                tbody.innerHTML = ''; // очищаем старые строки
+        function updateTable() {
+            const isRespMode = document.getElementById('modeToggle').checked;
+            const url = '/api/table?mode=' + (isRespMode ? 'resp' : '');
 
-                const now = new Date().getTime() / 1000; // грубо, но для клиента хватит
+            fetch(url)
+                .then(r => r.json())
+                .then(entries => {
+                    const tbody = document.querySelector('tbody');
+                    tbody.innerHTML = '';
 
-                Object.entries(data).forEach(([name, deathTimeStr]) => {
-                    let t = new Date(deathTimeStr.replace(' ', 'T') + 'Z'); // грубый парсинг, предполагаем UTC от сервера
-                    if (mode === 'resp') t = new Date(t.getTime() + 5*60*60*1000);
+                    entries.forEach(entry => {
+                        const row = document.createElement('tr');
+                        if (entry.is_past) row.classList.add('past');
 
-                    const minutesLeft = Math.round((t - new Date()) / 60000);
-                    const isPast = minutesLeft < 0;
+                        const timeCell = document.createElement('td');
+                        timeCell.className = 'time-cell';
+                        timeCell.innerHTML = entry.time + 
+                            (entry.is_past ? '' : '<span class="minutes">(через ' + entry.minutes_left + ' мин)</span>');
 
-                    const row = document.createElement('tr');
-                    if (isPast) row.classList.add('past');
+                        const nameCell = document.createElement('td');
+                        nameCell.textContent = entry.name;
 
-                    const timeCell = document.createElement('td');
-                    timeCell.className = 'time-cell';
-                    timeCell.innerHTML = t.toLocaleString('ru-RU', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit'
-                    }).replace(',', '') + 
-                    (!isPast ? `<span class="minutes">(через ${minutesLeft} мин)</span>` : '');
+                        row.appendChild(timeCell);
+                        row.appendChild(nameCell);
+                        tbody.appendChild(row);
+                    });
+                })
+                .catch(err => console.error('Table update failed:', err));
+        }
 
-                    const nameCell = document.createElement('td');
-                    nameCell.textContent = name;
+        // Восстанавливаем режим из localStorage
+        window.addEventListener('load', () => {
+            const saved = localStorage.getItem('respMode') === 'true';
+            document.getElementById('modeToggle').checked = saved;
+            updateTable(); // первое обновление сразу
 
-                    row.appendChild(timeCell);
-                    row.appendChild(nameCell);
-                    tbody.appendChild(row);
-                });
-
-                // Сортировка строк по времени (клиентская)
-                const rows = Array.from(tbody.querySelectorAll('tr'));
-                rows.sort((a, b) => {
-                    const timeA = new Date(a.querySelector('.time-cell').textContent.split(' ')[0].split('.').reverse().join('-'));
-                    const timeB = new Date(b.querySelector('.time-cell').textContent.split(' ')[0].split('.').reverse().join('-'));
-                    return timeA - timeB;
-                });
-                rows.forEach(row => tbody.appendChild(row));
-            })
-            .catch(err => console.error('Update failed:', err));
-    }
-
-    // Первое обновление через 10 сек, потом каждые 10 сек
-    setTimeout(() => {
-        updateTable();
-        setInterval(updateTable, 10000);
-    }, 10000);
-</script>
+            // Последующие каждые 10 секунд
+            setInterval(updateTable, 10000);
+        });
+    </script>
 </body>
 </html>`
