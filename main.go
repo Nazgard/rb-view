@@ -148,7 +148,7 @@ const pageTemplate = `<!DOCTYPE html>
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 2rem 2rem 1rem; /* уменьшили снизу */
+            padding: 2rem 2rem 2rem; /* равномерный padding, снизу чуть больше для дыхания */
             box-sizing: border-box;
         }
 
@@ -220,9 +220,7 @@ const pageTemplate = `<!DOCTYPE html>
             box-shadow: 0 8px 32px rgba(0,0,0,0.6);
             border-radius: 12px;
             overflow: hidden;
-            flex-grow: 1; /* позволяет таблице занимать пространство, но не больше нужного */
-            display: flex;
-            align-items: flex-start;
+            background-color: var(--table-bg); /* явный bg, чтобы не было прозрачности */
         }
 
         table {
@@ -231,7 +229,6 @@ const pageTemplate = `<!DOCTYPE html>
             border-collapse: collapse;
             background-color: var(--table-bg);
             font-size: 1.5rem;
-            margin: auto; /* центрируем таблицу вертикально если места много */
         }
 
         th, td {
@@ -274,7 +271,7 @@ const pageTemplate = `<!DOCTYPE html>
 
         /* Мобильные устройства */
         @media (max-width: 768px) {
-            body { padding: 1rem 1rem 0.5rem; }
+            body { padding: 1rem 1rem 1.5rem; }
             h1 { font-size: 2rem; margin-bottom: 1rem; }
             .toggle-container {
                 font-size: 1.1rem;
@@ -303,7 +300,7 @@ const pageTemplate = `<!DOCTYPE html>
 
         /* Большие экраны */
         @media (min-width: 1920px) {
-            body { padding: 3rem 3rem 1.5rem; }
+            body { padding: 3rem 3rem 3rem; }
             h1 { font-size: 3.8rem; margin-bottom: 2rem; }
             .toggle-container { font-size: 1.8rem; gap: 1.5rem; }
             .toggle-switch { width: 90px; height: 48px; }
