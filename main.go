@@ -2,38 +2,55 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
+	"html/template"
 	"io"
 	"log"
 	"net/http"
 	"sort"
-	"text/template"
 	"time"
 )
 
 type Departure struct {
 	Time        time.Time
 	Name        string
-	MinutesLeft int  // минуты до/после респа (отрицательное — уже прошло)
-	IsPast      bool // true если респ уже был
+	MinutesLeft int
+	IsPast      bool
 }
 
-var httpClient = &http.Client{
-	Timeout: time.Second * 10,
-}
+var (
+	httpClient     = &http.Client{Timeout: 10 * time.Second}
+	state          = make(map[string]string)
+	moscowLocation *time.Location
+	tmpl           = template.Must(template.New("page").Parse(pageTemplate))
+)
 
-var state = make(map[string]string)
+func init() {
+	var err error
+	moscowLocation, err = time.LoadLocation("Europe/Moscow")
+	if err != nil {
+		log.Fatal("Cannot load timezone Europe/Moscow:", err)
+	}
+}
 
 func loadTimes() map[string]string {
 	resp, err := httpClient.Get("http://192.144.59.250:5000/api/deaths")
 	if err != nil {
-		log.Println("Error getting deaths: ", err)
+		log.Println("Error getting deaths:", err)
 		return make(map[string]string)
 	}
 	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Println("Error reading body:", err)
+		return make(map[string]string)
+	}
+
 	var result map[string]string
-	_ = json.Unmarshal(body, &result)
+	if err := json.Unmarshal(body, &result); err != nil {
+		log.Println("Error unmarshaling JSON:", err)
+		return make(map[string]string)
+	}
 	return result
 }
 
@@ -42,6 +59,7 @@ func updateState() {
 }
 
 func main() {
+	// Фоновая задача: обновляем данные каждую секунду
 	go func() {
 		for {
 			updateState()
@@ -50,30 +68,24 @@ func main() {
 	}()
 
 	http.HandleFunc("/", handler)
-	fmt.Println("Server starting on http://localhost:8080")
-	http.ListenAndServe(":8080", nil)
+	log.Println("Server starting on http://localhost:8080")
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	// Определяем режим: resp — время респа (+5 часов), иначе — время смерти
 	mode := r.URL.Query().Get("mode")
 	showResp := mode == "resp"
-	location, err := time.LoadLocation("Europe/Moscow")
-	if err != nil {
-		log.Printf("Error loading timezone: %v", err)
-		location = time.Local
-	}
-	now := time.Now().In(location)
+
+	now := time.Now().In(moscowLocation)
 
 	departures := make([]Departure, 0, len(state))
 	for name, t := range state {
-		parsedTime, err := time.ParseInLocation("2006-01-02 15:04:05", t, location)
+		parsedTime, err := time.ParseInLocation("2006-01-02 15:04:05", t, moscowLocation)
 		if err != nil {
 			log.Printf("Failed to parse time '%s' for %s: %v\n", t, name, err)
 			continue
 		}
 
-		// Если включён режим респа — добавляем 5 часов
 		if showResp {
 			parsedTime = parsedTime.Add(5 * time.Hour)
 		}
@@ -89,141 +101,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	// Сортировка по отображаемому времени
 	sort.Slice(departures, func(i, j int) bool {
 		return departures[i].Time.Before(departures[j].Time)
 	})
 
-	tmpl := `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Полевые боссы сервера Айрин</title>
-    <meta http-equiv="refresh" content="5">
-    <style>
-        body {
-            background-color: #333;
-            color: #fff;
-            font-family: monospace;
-            text-align: center;
-            margin: 0;
-            padding: 20px;
-        }
-        h1 {
-            color: #ffcc00;
-            margin-bottom: 10px;
-        }
-        .toggle-container {
-            margin-bottom: 20px;
-            font-size: 1.2em;
-        }
-        .toggle-switch {
-            position: relative;
-            display: inline-block;
-            width: 60px;
-            height: 34px;
-            margin: 0 10px;
-        }
-        .toggle-switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            border-radius: 34px;
-        }
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 26px;
-            width: 26px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-        input:checked + .slider {
-            background-color: #ffcc00;
-        }
-        input:checked + .slider:before {
-            transform: translateX(26px);
-        }
-        table {
-            margin: 0 auto;
-            border-collapse: collapse;
-            width: 70%;
-            background-color: #000;
-        }
-        th, td {
-            padding: 12px;
-            text-align: left;
-            border: 1px solid #555;
-            color: #fff;
-            font-size: 1.3em;
-        }
-        th {
-            background-color: #444;
-        }
-        th:first-child {
-            color: #ffcc00;
-        }
-    </style>
-</head>
-<body>
-    <h1>Полевые боссы сервера Айрин</h1>
-
-    <div class="toggle-container">
-        <label>
-            <strong>Показывать:</strong> время смерти
-        </label>
-        <label class="toggle-switch">
-            <input type="checkbox" id="modeToggle" {{if .ShowResp}}checked{{end}} onchange="toggleMode()">
-            <span class="slider"></span>
-        </label>
-        <label>
-            время респа (+5 часов)
-        </label>
-    </div>
-
-    <table>
-        <tr>
-            <th>Время</th>
-            <th>Босс</th>
-        </tr>
-        {{range .Departures}}
-        <tr>
-            <td>{{.Time.Format "02.01 15:04:05"}} МСК 
-				{{if not .IsPast}}
-					<em>(через {{.MinutesLeft}} мин)</em>
-                {{end}}
-			</td>
-            <td>{{.Name}}</td>
-        </tr>
-        {{end}}
-    </table>
-
-    <script>
-        function toggleMode() {
-            const checkbox = document.getElementById('modeToggle');
-            const newUrl = checkbox.checked 
-                ? window.location.pathname + '?mode=resp'
-                : window.location.pathname;
-            window.location.href = newUrl;
-        }
-    </script>
-</body>
-</html>
-	`
-
-	// Передаём данные в шаблон
 	data := struct {
 		Departures []Departure
 		ShowResp   bool
@@ -232,15 +113,263 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		ShowResp:   showResp,
 	}
 
-	t, err := template.New("departures").Parse(tmpl)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/html")
-	err = t.Execute(w, data)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tmpl.Execute(w, data); err != nil {
+		http.Error(w, "Template error", http.StatusInternalServerError)
+		log.Println("Template execute error:", err)
 	}
 }
+
+const pageTemplate = `<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Полевые боссы сервера Айрин</title>
+    <style>
+        :root {
+            --bg: #1e1e1e;
+            --text: #e0e0e0;
+            --accent: #ffcc00;
+            --table-bg: #111;
+            --border: #444;
+            --header-bg: #333;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif;
+            margin: 0;
+            padding: 2rem;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: var(--accent);
+            font-size: 2.8rem;
+            margin-bottom: 1.5rem;
+            text-shadow: 0 0 10px rgba(255,204,0,0.3);
+            text-align: center;
+        }
+
+        .toggle-container {
+            margin-bottom: 2.5rem;
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 70px;
+            height: 38px;
+            flex-shrink: 0;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background-color: #555;
+            transition: .4s;
+            border-radius: 38px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 30px;
+            width: 30px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--accent);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(32px);
+        }
+
+        .table-container {
+            width: 100%;
+            max-width: 1400px;
+            overflow-x: auto;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            min-width: 600px;
+            border-collapse: collapse;
+            background-color: var(--table-bg);
+            font-size: 1.5rem;
+        }
+
+        th, td {
+            padding: 1.2rem 1.5rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background-color: var(--header-bg);
+            color: var(--accent);
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+
+        tr:hover {
+            background-color: rgba(255,204,0,0.05);
+        }
+
+        .time-cell {
+            white-space: nowrap;
+            font-family: 'Courier New', monospace;
+            font-weight: 500;
+        }
+
+        .minutes {
+            color: #a0ffa0;
+            font-size: 0.9em;
+            margin-left: 0.8rem;
+        }
+
+        .past {
+            color: #888;
+        }
+
+        .past .minutes {
+            color: #666;
+        }
+
+        /* Мобильные устройства */
+        @media (max-width: 768px) {
+            body { padding: 1rem; }
+            h1 { font-size: 2rem; margin-bottom: 1rem; }
+            .toggle-container {
+                font-size: 1.1rem;
+                gap: 0.8rem;
+                flex-direction: column;
+                text-align: center;
+            }
+            .toggle-switch { width: 60px; height: 34px; }
+            .slider:before { width: 26px; height: 26px; }
+            input:checked + .slider:before { transform: translateX(26px); }
+            table { font-size: 1.1rem; min-width: 500px; }
+            th, td { padding: 0.8rem 1rem; }
+            .minutes {
+                display: block;
+                margin-left: 0;
+                margin-top: 0.3rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 { font-size: 1.7rem; }
+            .toggle-container { font-size: 1rem; }
+            table { font-size: 1rem; }
+            th, td { padding: 0.6rem 0.8rem; }
+        }
+
+        /* Большие экраны */
+        @media (min-width: 1920px) {
+            body { padding: 3rem; }
+            h1 { font-size: 3.8rem; margin-bottom: 2rem; }
+            .toggle-container { font-size: 1.8rem; gap: 1.5rem; }
+            .toggle-switch { width: 90px; height: 48px; }
+            .slider:before { width: 38px; height: 38px; }
+            input:checked + .slider:before { transform: translateX(42px); }
+            table { font-size: 2rem; }
+            th, td { padding: 1.8rem 2rem; }
+            .table-container { max-width: 1800px; }
+        }
+
+        @media (min-width: 2560px) {
+            h1 { font-size: 4.5rem; }
+            table { font-size: 2.4rem; }
+            th, td { padding: 2.2rem 2.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Полевые боссы сервера Айрин</h1>
+
+    <div class="toggle-container">
+        <strong>Показывать:</strong>
+        <span>время смерти</span>
+        <label class="toggle-switch">
+            <input type="checkbox" id="modeToggle" {{if .ShowResp}}checked{{end}} onchange="toggleMode()">
+            <span class="slider"></span>
+        </label>
+        <span>время респа (+5 ч)</span>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Время (МСК)</th>
+                    <th>Босс</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Departures}}
+                <tr {{if .IsPast}}class="past"{{end}}>
+                    <td class="time-cell">
+                        {{.Time.Format "02.01 15:04:05"}}
+                        {{if not .IsPast}}
+                            <span class="minutes">(через {{.MinutesLeft}} мин)</span>
+                        {{end}}
+                    </td>
+                    <td>{{.Name}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        function toggleMode() {
+            const checked = document.getElementById('modeToggle').checked;
+            const url = checked ? '?mode=resp' : '/';
+            if (window.location.search !== (checked ? '?mode=resp' : '')) {
+                window.location.href = url;
+            }
+        }
+
+        // Автообновление каждые 10 секунд
+        setInterval(() => {
+            fetch(window.location.href)
+                .then(r => r.text())
+                .then(html => {
+                    document.open();
+                    document.write(html);
+                    document.close();
+                })
+                .catch(err => console.error('Update failed:', err));
+        }, 10000);
+    </script>
+</body>
+</html>`
