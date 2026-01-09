@@ -21,7 +21,8 @@ var (
 	httpClient     = &http.Client{Timeout: 10 * time.Second}
 	state          = make(map[string]string) // сырые данные смерти от внешнего API
 	moscowLocation *time.Location
-	tmpl           = template.Must(template.ParseFiles("templates/page.html"))
+	tmplMain       = template.Must(template.ParseFiles("templates/page.html"))
+	tmplAbout      = template.Must(template.ParseFiles("templates/about.html"))
 )
 
 func init() {
@@ -107,19 +108,27 @@ func main() {
 		}
 	}()
 
-	http.HandleFunc("/", handler)
+	http.HandleFunc("/", mainHandler)
 	http.HandleFunc("/api/table", tableAPIHandler)
 	// Статические файлы (звук, если добавишь картинки и т.д.)
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static/"))))
-
+	http.HandleFunc("/about", aboutHandler)
 	log.Println("Server starting on http://localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
-func handler(w http.ResponseWriter, r *http.Request) {
+func aboutHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tmplAbout.Execute(w, nil); err != nil { // данных не нужно
+		http.Error(w, "Template error", http.StatusInternalServerError)
+		log.Println("About template error:", err)
+	}
+}
+
+func mainHandler(w http.ResponseWriter, r *http.Request) {
 	// Начальная загрузка — просто отдаём HTML с пустой таблицей или с данными (можно пустую)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := tmpl.Execute(w, struct{ ShowResp bool }{ShowResp: r.URL.Query().Get("mode") == "resp"}); err != nil {
+	if err := tmplMain.Execute(w, struct{ ShowResp bool }{ShowResp: r.URL.Query().Get("mode") == "resp"}); err != nil {
 		http.Error(w, "Template error", http.StatusInternalServerError)
 		log.Println("Template execute error:", err)
 	}

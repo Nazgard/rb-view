@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>О проекте — Полевые боссы Айрин</title>
+    <style>
+        :root {
+            --bg: #1e1e1e;
+            --text: #e0e0e0;
+            --accent: #ffcc00;
+            --card-bg: #111;
+            --border: #444;
+            --shadow: 0 8px 32px rgba(0,0,0,0.6);
+        }
+
+        html, body {
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+            box-sizing: border-box;
+        }
+
+        header {
+            width: 100%;
+            max-width: 1400px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            color: var(--accent);
+            font-size: 2.8rem;
+            text-shadow: 0 0 10px rgba(255,204,0,0.3);
+            margin: 0;
+        }
+
+        nav a {
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 1.4rem;
+            padding: 0.5rem 1rem;
+            border: 2px solid var(--accent);
+            border-radius: 8px;
+            transition: background 0.3s;
+        }
+
+        nav a:hover {
+            background: rgba(255,204,0,0.1);
+        }
+
+        .content {
+            width: 100%;
+            max-width: 1000px;
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            line-height: 1.8;
+            font-size: 1.3rem;
+        }
+
+        .content h2 {
+            color: var(--accent);
+            font-size: 2rem;
+            margin-top: 2rem;
+            text-shadow: 0 0 8px rgba(255,204,0,0.2);
+        }
+
+        .content p {
+            margin: 1rem 0;
+        }
+
+        .footer {
+            margin-top: auto;
+            padding: 1rem 0;
+            font-size: 1.1rem;
+            text-align: center;
+            opacity: 0.8;
+        }
+
+        .footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            header { flex-direction: column; gap: 1rem; }
+            h1 { font-size: 2.2rem; }
+            .content { padding: 1.5rem; font-size: 1.2rem; }
+        }
+
+        @media (max-width: 480px) {
+            h1 { font-size: 1.8rem; }
+            .content { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+<header>
+    <h1>О проекте</h1>
+    <nav>
+        <a href="/">← Назад к боссам</a>
+    </nav>
+</header>
+
+<div class="content">
+    <h2>Как работает</h2>
+    <p>Скрипт в реал-тайм захватывает экран, вырезает HP-бары боссов и анализирует их состояние. Как только бар становится пустым — фиксируется точное время смерти.</p>
+
+    <h2>Откуда берутся даты</h2>
+    <p>Время смерти определяется напрямую по картинке экрана — когда HP-бар обнуляется, скрипт ловит этот момент и записывает текущую системную дату/время. Никаких читов, только компьютерное зрение.</p>
+
+    <h2>Telegram-бот</h2>
+    <p>Есть отдельный бот <a href="https://t.me/l2_airin_rb_bot" target="_blank" rel="noopener">@l2_airin_rb_bot</a>, который отправляет уведомления о предстоящих респаунах прямо в Telegram. Подпишись — и не пропустишь ни одного босса. Бот работает на тех же данных, что и сайт, обновляется в реальном времени.</p>
+
+    <h2>Контакты</h2>
+    <p>Если есть вопросы, идеи или баги — пиши в Telegram: <a href="https://t.me/makarov_dev" target="_blank" rel="noopener">@makarov_dev</a></p>
+</div>
+
+<div class="footer">
+    <a href="https://t.me/l2_airin_rb_bot" target="_blank" rel="noopener">
+        Telegram-бот для уведомлений о респах
+    </a>
+</div>
+</body>
+</html>
