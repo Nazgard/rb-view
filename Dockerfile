@@ -28,8 +28,9 @@ FROM scratch
 
 # Копируем только исполняемый файл из этапа сборки
 COPY --from=builder /app/bot-rb /bot-rb
-COPY --from=builder /app/templates/page.html /templates/page.html
-COPY --from=builder /app/static/alert.mp3 /static/alert.mp3
+COPY --from=builder /app/templates/* /templates/
+COPY --from=builder /app/static/* /static/
+
 COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 
 # Указываем точку входа
