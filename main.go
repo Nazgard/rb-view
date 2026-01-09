@@ -23,6 +23,7 @@ var (
 	moscowLocation *time.Location
 	tmplMain       = template.Must(template.ParseFiles("templates/page.html"))
 	tmplAbout      = template.Must(template.ParseFiles("templates/about.html"))
+	tmplSwagger    = template.Must(template.ParseFiles("templates/swagger.html"))
 )
 
 func init() {
@@ -112,6 +113,7 @@ func main() {
 	http.HandleFunc("/api/table", tableAPIHandler)
 	// Статические файлы (звук, если добавишь картинки и т.д.)
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static/"))))
+	http.HandleFunc("/swagger", swaggerHandler)
 	http.HandleFunc("/about", aboutHandler)
 	log.Println("Server starting on http://localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
@@ -131,5 +133,13 @@ func mainHandler(w http.ResponseWriter, r *http.Request) {
 	if err := tmplMain.Execute(w, struct{ ShowResp bool }{ShowResp: r.URL.Query().Get("mode") == "resp"}); err != nil {
 		http.Error(w, "Template error", http.StatusInternalServerError)
 		log.Println("Template execute error:", err)
+	}
+}
+
+func swaggerHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tmplSwagger.Execute(w, nil); err != nil {
+		http.Error(w, "Template error", http.StatusInternalServerError)
+		log.Println("Swagger template error:", err)
 	}
 }

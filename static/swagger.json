@@ -1,0 +1,57 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Bosses API",
+    "description": "API для данных о полевых боссах сервера Айрин",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://rb.makarov.dev",
+      "description": "Production server"
+    },
+    {
+      "url": "http://localhost:8080",
+      "description": "Local development"
+    }
+  ],
+  "paths": {
+    "/api/table": {
+      "get": {
+        "summary": "Таблица боссов для фронта",
+        "description": "Возвращает отсортированный массив с временем (смерть или респ +5ч), минутами до события и флагом прошлого",
+        "parameters": [
+          {
+            "name": "mode",
+            "in": "query",
+            "description": "Если 'resp' — показывать время респауна (+5 часов)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": { "type": "string" },
+                      "time": { "type": "string", "example": "09.01 15:04:05" },
+                      "minutes_left": { "type": "integer" },
+                      "is_past": { "type": "boolean" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
