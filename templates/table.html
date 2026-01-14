@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Полевые боссы сервера Айрин</title>
+    <style>
+        :root {
+            --bg: #1e1e1e;
+            --text: #e0e0e0;
+            --accent: #ffcc00;
+            --table-bg: #111;
+            --border: #444;
+            --header-bg: #333;
+        }
+
+        html, body {
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            color: var(--accent);
+            font-size: 2.8rem;
+            margin-bottom: 1.5rem;
+            text-shadow: 0 0 10px rgba(255,204,0,0.3);
+            text-align: center;
+        }
+
+        .toggle-container {
+            margin-bottom: 2.5rem;
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            justify-content: flex-end;
+            width: 100%;
+            max-width: 1400px;
+            flex-wrap: wrap;
+        }
+
+        .toggle-container input {
+            display: none;
+        }
+
+        .toggle-container label {
+            position: relative;
+            padding-left: 2.8rem;
+            cursor: pointer;
+            user-select: none;
+            color: var(--text);
+            white-space: nowrap;
+        }
+
+        .toggle-container label::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 1.8rem;
+            height: 1.8rem;
+            background-color: #333;
+            border: 2px solid var(--border);
+            border-radius: 4px;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        .toggle-container input:checked + label::before {
+            background-color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .toggle-container label::after {
+            content: '';
+            position: absolute;
+            left: 0.55rem;
+            top: 50%;
+            width: 0.6rem;
+            height: 1.1rem;
+            border: solid #1e1e1e;
+            border-width: 0 3px 3px 0;
+            transform: translateY(-60%) rotate(45deg);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .toggle-container input:checked + label::after {
+            opacity: 1;
+        }
+
+        .sound-hint {
+            font-size: 0.9rem;
+            opacity: 0.7;
+            margin-top: 0.5rem;
+            text-align: right;
+            width: 100%;
+        }
+
+        .table-container {
+            width: 100%;
+            max-width: 1400px;
+            overflow-y: auto;
+            overflow-x: auto;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+            border-radius: 12px;
+            background-color: var(--table-bg);
+            margin-bottom: 2rem;
+        }
+
+        table {
+            width: 100%;
+            min-width: 600px;
+            border-collapse: collapse;
+            background-color: var(--table-bg);
+            font-size: 1.5rem;
+        }
+
+        th, td {
+            padding: 1.2rem 1.5rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background-color: var(--header-bg);
+            color: var(--accent);
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+
+        tr:hover {
+            background-color: rgba(255,204,0,0.05);
+        }
+
+        .time-cell {
+            white-space: nowrap;
+            font-family: 'Courier New', monospace;
+            font-weight: 500;
+        }
+
+        .minutes {
+            color: #a0ffa0;
+            font-size: 0.9em;
+            margin-left: 0.8rem;
+        }
+
+        .past {
+            color: #888;
+        }
+
+        .past .minutes {
+            color: #666;
+        }
+
+        .footer {
+            margin-top: auto;
+            padding: 1rem 0;
+            font-size: 1.1rem;
+            text-align: center;
+            opacity: 0.8;
+        }
+
+        .footer a {
+            color: var(--accent);
+            text-decoration: none;
+            transition: opacity 0.3s;
+        }
+
+        .footer a:hover {
+            opacity: 0.7;
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .toggle-container { justify-content: center; gap: 1.5rem; }
+            .sound-hint { text-align: center; }
+        }
+
+        @media (max-width: 480px) {
+            .toggle-container { flex-direction: column; gap: 1rem; }
+        }
+    </style>
+</head>
+<body>
+<h1>Полевые боссы сервера Айрин</h1>
+
+<div class="toggle-container">
+    <div>
+        <input type="checkbox" id="modeToggle" {{if .ShowResp}}checked{{end}}>
+        <label for="modeToggle">Время респа</label>
+    </div>
+    <div>
+        <input type="checkbox" id="soundToggle">
+        <label for="soundToggle">Звук за 5 мин</label>
+    </div>
+</div>
+
+<div class="table-container">
+    <table>
+        <thead>
+        <tr>
+            <th>Время (МСК)</th>
+            <th>Босс</th>
+        </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<div class="footer">
+    <a href="https://t.me/l2_airin_rb_bot" target="_blank" rel="noopener">
+        Telegram-бот для уведомлений о респах
+    </a>
+</div>
+
+<audio id="alertSound" preload="auto">
+    <source src="/static/alert.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+    let audioUnlocked = false;
+    let lastPlayTime = 0;
+    const COOLDOWN_MS = 30 * 60 * 1000; // 30 минут
+
+    const audio = document.getElementById('alertSound');
+
+    function playAlert() {
+        if (!audioUnlocked) return;
+
+        const now = Date.now();
+        if (now - lastPlayTime >= COOLDOWN_MS) {
+            audio.currentTime = 0;
+            audio.play().catch(e => console.log('Play failed:', e));
+            lastPlayTime = now;
+        }
+    }
+
+    function updateTable() {
+        const isRespMode = document.getElementById('modeToggle').checked;
+        const soundEnabled = document.getElementById('soundToggle').checked;
+        const url = '/api/table?mode=' + (isRespMode ? 'resp' : '');
+
+        fetch(url)
+            .then(r => r.json())
+            .then(entries => {
+                const tbody = document.querySelector('tbody');
+                tbody.innerHTML = '';
+
+                entries.forEach(entry => {
+                    const row = document.createElement('tr');
+                    if (entry.is_past) row.classList.add('past');
+
+                    const timeCell = document.createElement('td');
+                    timeCell.className = 'time-cell';
+                    timeCell.innerHTML = entry.time +
+                        (entry.is_past ? '' : '<span class="minutes">(через ' + entry.minutes_left + ' мин)</span>');
+
+                    const nameCell = document.createElement('td');
+                    nameCell.textContent = entry.name;
+
+                    row.appendChild(timeCell);
+                    row.appendChild(nameCell);
+                    tbody.appendChild(row);
+                });
+
+                if (isRespMode && soundEnabled && audioUnlocked) {
+                    const hasNear = entries.some(e => !e.is_past && e.minutes_left > 0 && e.minutes_left <= 5);
+                    if (hasNear) {
+                        playAlert();
+                    }
+                }
+            })
+            .catch(err => console.error('Table update failed:', err));
+    }
+
+    document.getElementById('modeToggle').addEventListener('change', function() {
+        localStorage.setItem('respMode', this.checked);
+        const newMode = this.checked ? 'resp' : '';
+        history.pushState({}, '', newMode ? '?mode=' + newMode : '/');
+        updateTable();
+    });
+
+    document.getElementById('soundToggle').addEventListener('change', function() {
+        if (this.checked && !audioUnlocked) {
+            audio.play().then(() => {
+                audio.pause();
+                audio.currentTime = 0;
+                audioUnlocked = true;
+                updateTable();
+            }).catch(e => console.log('Unlock failed:', e));
+        }
+    });
+
+    window.addEventListener('popstate', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const isResp = urlParams.get('mode') === 'resp';
+        document.getElementById('modeToggle').checked = isResp;
+        localStorage.setItem('respMode', isResp);
+        updateTable();
+    });
+
+    window.addEventListener('load', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        let isResp = urlParams.get('mode') === 'resp';
+
+        if (window.location.search) {
+            document.getElementById('modeToggle').checked = isResp;
+            localStorage.setItem('respMode', isResp);
+        } else {
+            isResp = localStorage.getItem('respMode') === 'true';
+            document.getElementById('modeToggle').checked = isResp;
+            if (isResp) history.pushState({}, '', '?mode=resp');
+        }
+
+        document.getElementById('soundToggle').checked = false;
+        audioUnlocked = false;
+        lastPlayTime = 0;
+
+        updateTable();
+        setInterval(updateTable, 10000);
+    });
+</script>
+</body>
+</html>

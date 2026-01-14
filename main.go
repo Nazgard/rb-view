@@ -22,6 +22,7 @@ var (
 	state          = make(map[string]string) // сырые данные смерти от внешнего API
 	moscowLocation *time.Location
 	tmplMain       = template.Must(template.ParseFiles("templates/page.html"))
+	tableMain      = template.Must(template.ParseFiles("templates/table.html"))
 	tmplAbout      = template.Must(template.ParseFiles("templates/about.html"))
 	tmplSwagger    = template.Must(template.ParseFiles("templates/swagger.html"))
 )
@@ -110,6 +111,7 @@ func main() {
 	}()
 
 	http.HandleFunc("/", mainHandler)
+	http.HandleFunc("/table", oldTableHandler)
 	http.HandleFunc("/api/table", tableAPIHandler)
 	// Статические файлы (звук, если добавишь картинки и т.д.)
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static/"))))
@@ -131,6 +133,15 @@ func mainHandler(w http.ResponseWriter, r *http.Request) {
 	// Начальная загрузка — просто отдаём HTML с пустой таблицей или с данными (можно пустую)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmplMain.Execute(w, struct{ ShowResp bool }{ShowResp: r.URL.Query().Get("mode") == "resp"}); err != nil {
+		http.Error(w, "Template error", http.StatusInternalServerError)
+		log.Println("Template execute error:", err)
+	}
+}
+
+func oldTableHandler(w http.ResponseWriter, r *http.Request) {
+	// Начальная загрузка — просто отдаём HTML с пустой таблицей или с данными (можно пустую)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tableMain.Execute(w, struct{ ShowResp bool }{ShowResp: r.URL.Query().Get("mode") == "resp"}); err != nil {
 		http.Error(w, "Template error", http.StatusInternalServerError)
 		log.Println("Template execute error:", err)
 	}
