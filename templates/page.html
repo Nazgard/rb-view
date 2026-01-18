@@ -45,27 +45,81 @@
             font-size: 1.4rem;
             display: flex;
             align-items: center;
-            gap: 2rem;
-            justify-content: center; /* строго по центру, как карточки */
+            gap: 2.5rem;
+            justify-content: center;
             width: 100%;
             max-width: 1400px;
             flex-wrap: wrap;
         }
 
-        .toggle-container input {
-            display: none;
-        }
-
         .toggle-container label {
-            position: relative;
-            padding-left: 2.8rem;
-            cursor: pointer;
             user-select: none;
             color: var(--text);
             white-space: nowrap;
         }
 
-        .toggle-container label::before {
+        /* Стили для ползунка громкости */
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .volume-control input[type="range"] {
+            width: 160px;
+            -webkit-appearance: none;
+            height: 8px;
+            background: #333;
+            border-radius: 4px;
+            outline: none;
+            opacity: 0.9;
+            transition: opacity .2s;
+        }
+
+        .volume-control input[type="range"]:hover {
+            opacity: 1;
+        }
+
+        .volume-control input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255,204,0,0.5);
+        }
+
+        .volume-control input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 10px rgba(255,204,0,0.5);
+        }
+
+        .volume-value {
+            min-width: 50px;
+            text-align: right;
+            font-family: monospace;
+            color: var(--accent);
+        }
+
+        /* старый чекбокс (оставляем только для modeToggle) */
+        .toggle-container input[type="checkbox"] {
+            display: none;
+        }
+
+        .toggle-container input[type="checkbox"] + label {
+            position: relative;
+            padding-left: 2.8rem;
+            cursor: pointer;
+        }
+
+        .toggle-container input[type="checkbox"] + label::before {
             content: '';
             position: absolute;
             left: 0;
@@ -76,15 +130,15 @@
             background-color: #333;
             border: 2px solid var(--border);
             border-radius: 4px;
-            transition: background-color 0.3s, border-color 0.3s;
+            transition: all 0.3s;
         }
 
-        .toggle-container input:checked + label::before {
+        .toggle-container input[type="checkbox"]:checked + label::before {
             background-color: var(--accent);
             border-color: var(--accent);
         }
 
-        .toggle-container label::after {
+        .toggle-container input[type="checkbox"] + label::after {
             content: '';
             position: absolute;
             left: 0.55rem;
@@ -98,10 +152,11 @@
             transition: opacity 0.3s;
         }
 
-        .toggle-container input:checked + label::after {
+        .toggle-container input[type="checkbox"]:checked + label::after {
             opacity: 1;
         }
 
+        /* карточки и остальное — без изменений */
         .cards-container {
             width: 100%;
             max-width: 1400px;
@@ -159,7 +214,6 @@
             font-weight: 700;
             color: var(--accent);
             text-shadow: 0 0 8px rgba(255,204,0,0.3);
-            letter-spacing: 0.5px;
         }
 
         .card-time {
@@ -186,7 +240,6 @@
         .footer a {
             color: var(--accent);
             text-decoration: none;
-            transition: opacity 0.3s;
         }
 
         .footer a:hover {
@@ -196,34 +249,14 @@
 
         @media (max-width: 768px) {
             body { padding: 1rem; }
-            h1 { font-size: 2.2rem; margin-bottom: 1rem; }
-            .toggle-container { font-size: 1.2rem; gap: 1.5rem; }
-            .cards-container {
-                grid-template-columns: repeat(auto-fill, minmax(220px, 240px));
-                gap: 1.2rem;
-            }
-            .card-img { height: 280px; }
-            .card-info h3 { font-size: 1.4rem; }
-            .card-time { font-size: 1.2rem; }
+            h1 { font-size: 2.2rem; }
+            .toggle-container { gap: 1.8rem; font-size: 1.2rem; }
+            .volume-control input[type="range"] { width: 140px; }
         }
 
         @media (max-width: 480px) {
-            h1 { font-size: 1.8rem; }
-            .toggle-container { flex-direction: column; gap: 1rem; }
-            .cards-container {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-            }
-            .card-img { height: 320px; }
-            .card-info { padding: 0.8rem; }
-        }
-
-        @media (min-width: 1920px) {
-            .cards-container {
-                grid-template-columns: repeat(auto-fill, minmax(300px, 320px));
-                gap: 2rem;
-            }
-            .card-img { height: 380px; }
+            .toggle-container { flex-direction: column; gap: 1.2rem; }
+            .cards-container { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -235,9 +268,11 @@
         <input type="checkbox" id="modeToggle" {{if .ShowResp}}checked{{end}}>
         <label for="modeToggle">Время респа</label>
     </div>
-    <div>
-        <input type="checkbox" id="soundToggle">
-        <label for="soundToggle">Звук за 5 мин</label>
+
+    <div class="volume-control">
+        <label for="volumeSlider">Звук за 5 мин</label>
+        <input type="range" id="volumeSlider" min="0" max="100" value="0" step="1">
+        <span class="volume-value" id="volumeValue">0%</span>
     </div>
 </div>
 
@@ -266,6 +301,39 @@
 
     const audio = document.getElementById('alertSound');
     const cardsContainer = document.getElementById('cardsContainer');
+    const volumeSlider = document.getElementById('volumeSlider');
+    const volumeValue = document.getElementById('volumeValue');
+
+    let volumePreviewTimeout = null;
+
+    volumeSlider.addEventListener('input', () => {
+        const vol = Number(volumeSlider.value);
+        volumeValue.textContent = vol + '%';
+        audio.volume = vol / 100;
+
+        // Очищаем предыдущий таймер
+        if (volumePreviewTimeout) {
+            clearTimeout(volumePreviewTimeout);
+        }
+
+        // Запускаем звук только если пользователь "закончил" двигать ползунок
+        if (vol > 0 && audioUnlocked) {
+            volumePreviewTimeout = setTimeout(() => {
+                audio.currentTime = 0;
+                audio.play().catch(() => {});
+            }, 180);   // 180–250 мс — комфортный диапазон
+        }
+    });
+
+    // Синхронизация ползунка и отображения
+    volumeSlider.addEventListener('input', () => {
+        const vol = volumeSlider.value;
+        volumeValue.textContent = vol + '%';
+        audio.volume = vol / 100;
+    });
+
+    // Инициализация громкости = 0
+    audio.volume = 0;
 
     function getBossImage(name) {
         const slug = name.toLowerCase().replace(/\s+/g, '-');
@@ -273,7 +341,7 @@
     }
 
     function playAlert() {
-        if (!audioUnlocked) return;
+        if (!audioUnlocked || audio.volume <= 0) return;
 
         const now = Date.now();
         if (now - lastPlayTime >= COOLDOWN_MS) {
@@ -285,7 +353,6 @@
 
     function updateTable() {
         const isRespMode = document.getElementById('modeToggle').checked;
-        const soundEnabled = document.getElementById('soundToggle').checked;
         const url = '/api/table?mode=' + (isRespMode ? 'resp' : '');
 
         fetch(url)
@@ -302,18 +369,18 @@
                     if (near) card.classList.add('near');
 
                     card.innerHTML = `
-                            <img class="card-img" src="${getBossImage(entry.name)}" alt="${entry.name}" onerror="this.src='/static/default.jpg'">
-                            <div class="card-info">
-                                <h3>${entry.name}</h3>
-                                <p class="card-time">${entry.time}</p>
-                                ${!entry.is_past ? `<p class="card-minutes">через ${entry.minutes_left} мин</p>` : ''}
-                            </div>
-                        `;
+                        <img class="card-img" src="${getBossImage(entry.name)}" alt="${entry.name}" onerror="this.src='/static/default.jpg'">
+                        <div class="card-info">
+                            <h3>${entry.name}</h3>
+                            <p class="card-time">${entry.time}</p>
+                            ${!entry.is_past ? `<p class="card-minutes">через ${entry.minutes_left} мин</p>` : ''}
+                        </div>
+                    `;
 
                     cardsContainer.appendChild(card);
                 });
 
-                if (isRespMode && soundEnabled && audioUnlocked) {
+                if (isRespMode) {
                     const hasNear = entries.some(e => !e.is_past && e.minutes_left > 0 && e.minutes_left <= 5);
                     if (hasNear) {
                         playAlert();
@@ -330,16 +397,16 @@
         updateTable();
     });
 
-    document.getElementById('soundToggle').addEventListener('change', function() {
-        if (this.checked && !audioUnlocked) {
+    // Разблокировка аудио при первом взаимодействии (важно для мобильных устройств)
+    document.addEventListener('click', function unlockAudio() {
+        if (!audioUnlocked) {
             audio.play().then(() => {
                 audio.pause();
                 audio.currentTime = 0;
                 audioUnlocked = true;
-                updateTable();
-            }).catch(e => console.log('Unlock failed:', e));
+            }).catch(() => {});
         }
-    });
+    }, { once: true });
 
     window.addEventListener('popstate', () => {
         const urlParams = new URLSearchParams(window.location.search);
@@ -362,9 +429,9 @@
             if (isResp) history.pushState({}, '', '?mode=resp');
         }
 
-        document.getElementById('soundToggle').checked = false;
-        audioUnlocked = false;
-        lastPlayTime = 0;
+        // ползунок уже на 0% по html
+        volumeValue.textContent = '0%';
+        audio.volume = 0;
 
         updateTable();
         setInterval(updateTable, 10000);
